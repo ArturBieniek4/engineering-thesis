@@ -1,0 +1,163 @@
+@software{Verilator,
+author = {Snyder, Wilson and Wasson, Paul and Galbi, Duane and Lore, Geza and {et al}},
+license = {["LGPL-3.0-only", "Artistic-2.0"]},
+title = {{Verilator}},
+url = {https://github.com/verilator/verilator}
+}
+
+@misc{IEEE1364-2001,
+  author={},
+  journal={IEEE Std 1364-2001}, 
+  title={IEEE Standard Verilog Hardware Description Language}, 
+  year={2001},
+  volume={},
+  number={},
+  pages={1-792},
+  keywords={IEEE Standards;Hardware design languages;Hardware;Patents;Task analysis;Force;computer;computer languages;digital systems;electronic systems;hardware;hard-ware description languages;hardware design;HDL;PLI;programming language interface;VerilogHDL;Verilog PLI;Verilog ®},
+  doi={10.1109/IEEESTD.2001.93352}}
+
+@misc{IEEE1800-2005,
+  author={},
+  journal={IEEE Std 1800-2005}, 
+  title={IEEE Standard for SystemVerilog: Unified Hardware Design, Specification and Verification Language}, 
+  year={2005},
+  volume={},
+  number={},
+  pages={1-648},
+  keywords={Hardware design languages;Graphics;IEEE Standards;Programming;Color;Hardware;Assertions;Design Automation;Design Verification;Hardware Description Language (HDL);Verilog;Programming Language Interface (PLI);Verilog Programming Interface (VPI);SystemVerilog},
+  doi={10.1109/IEEESTD.2005.97972}}
+
+@ARTICLE{IEEE1800-2023,
+  author={},
+  journal={IEEE Std 1800-2023 (Revision of IEEE Std 1800-2017)}, 
+  title={IEEE Standard for SystemVerilog--Unified Hardware Design, Specification, and Verification Language}, 
+  year={2024},
+  volume={},
+  number={},
+  pages={1-1354},
+  keywords={IEEE Standards;Design automation;Hardware design languages;Formal verification;Computer languages;System analysis and design;assertions;design automation;design verification;hardware description language;HDL;HDVL;IEEE Std 1800™;PLI;programming language interface;SystemVerilog;Verilog®;VPI},
+  doi={10.1109/IEEESTD.2024.10458102}}
+
+@software{rtlmeter,
+  author       = {Geza Lore i in.},
+  title        = {RTLMeter benchmark suite},
+  url          = {https://github.com/verilator/rtlmeter},
+  license      = {Apache-2.0},
+}
+
+@software{caliptra,
+  author       = {{CHIPS Alliance}},
+  title        = {Caliptra RTL},
+  subtitle     = {Open-source Root of Trust RTL implementation},
+  url          = {https://github.com/chipsalliance/caliptra-rtl},
+  version      = {v2.1.1},
+  license      = {Apache-2.0},
+}
+
+@inproceedings{vortex,
+	author = {Tine, Blaise and Yalamarthy, Krishna Praveen and Elsabbagh, Fares and Hyesoon, Kim},
+	title = {Vortex: Extending the RISC-V ISA for GPGPU and 3D-Graphics},
+	year = {2021},
+	isbn = {9781450385572},
+	publisher = {Association for Computing Machinery},
+	address = {New York, NY, USA},
+	url = {https://doi.org/10.1145/3466752.3480128},
+	doi = {10.1145/3466752.3480128},
+	abstract = {The importance of open-source hardware and software has been increasing. However, despite GPUs being one of the more popular accelerators across various applications, there is very little open-source GPU infrastructure in the public domain. We argue that one of the reasons for the lack of open-source infrastructure for GPUs is rooted in the complexity of their ISA and software stacks. In this work, we first propose an ISA extension to RISC-V that supports GPGPUs and graphics. The main goal of the ISA extension proposal is to minimize the ISA changes so that the corresponding changes to the open-source ecosystem are also minimal, which makes for a sustainable development ecosystem. To demonstrate the feasibility of the minimally extended RISC-V ISA, we implemented the complete software and hardware stacks of Vortex on FPGA. Vortex is a PCIe-based soft GPU that supports OpenCL and OpenGL. Vortex can be used in a variety of applications, including machine learning, graph analytics, and graphics rendering. Vortex can scale up to 32 cores on an Altera Stratix 10 FPGA, delivering a peak performance of 25.6 GFlops at 200 Mhz.},
+	booktitle = {MICRO-54: 54th Annual IEEE/ACM International Symposium on Microarchitecture},
+	pages = {754–766},
+	numpages = {13},
+	keywords = {reconfigurable computing, memory systems., computer graphics},
+	location = {Virtual Event, Greece},
+	series = {MICRO '21}
+}
+
+@software{NVDLA,
+  author       = {{NVIDIA Corporation}},
+  title        = {NVDLA},
+  subtitle     = {Open-source Deep Learning Accelerator},
+  url          = {https://github.com/nvdla},
+  license      = {Open NVDLA License v1.0},
+}
+
+@inproceedings{10.1145/2872362.2872414,
+author = {Balkind, Jonathan and McKeown, Michael and Fu, Yaosheng and Nguyen, Tri and Zhou, Yanqi and Lavrov, Alexey and Shahrad, Mohammad and Fuchs, Adi and Payne, Samuel and Liang, Xiaohua and Matl, Matthew and Wentzlaff, David},
+title = {OpenPiton: An Open Source Manycore Research Framework},
+year = {2016},
+isbn = {9781450340915},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+url = {https://doi.org/10.1145/2872362.2872414},
+doi = {10.1145/2872362.2872414},
+abstract = {Industry is building larger, more complex, manycore processors on the back of strong institutional knowledge, but academic projects face difficulties in replicating that scale. To alleviate these difficulties and to develop and share knowledge, the community needs open architecture frameworks for simulation, synthesis, and software exploration which support extensibility, scalability, and configurability, alongside an established base of verification tools and supported software. In this paper we present OpenPiton, an open source framework for building scalable architecture research prototypes from 1 core to 500 million cores. OpenPiton is the world's first open source, general-purpose, multithreaded manycore processor and framework. OpenPiton leverages the industry hardened OpenSPARC T1 core with modifications and builds upon it with a scratch-built, scalable uncore creating a flexible, modern manycore design. In addition, OpenPiton provides synthesis and backend scripts for ASIC and FPGA to enable other researchers to bring their designs to implementation. OpenPiton provides a complete verification infrastructure of over 8000 tests, is supported by mature software tools, runs full-stack multiuser Debian Linux, and is written in industry standard Verilog. Multiple implementations of OpenPiton have been created including a taped-out 25-core implementation in IBM's 32nm process and multiple Xilinx FPGA prototypes.},
+booktitle = {Proceedings of the Twenty-First International Conference on Architectural Support for Programming Languages and Operating Systems},
+pages = {217–232},
+numpages = {16},
+keywords = {manycore, multicore, open-source},
+location = {Atlanta, Georgia, USA},
+series = {ASPLOS '16}
+}
+
+@article{10.1145/2954679.2872414,
+author = {Balkind, Jonathan and McKeown, Michael and Fu, Yaosheng and Nguyen, Tri and Zhou, Yanqi and Lavrov, Alexey and Shahrad, Mohammad and Fuchs, Adi and Payne, Samuel and Liang, Xiaohua and Matl, Matthew and Wentzlaff, David},
+title = {OpenPiton: An Open Source Manycore Research Framework},
+year = {2016},
+issue_date = {April 2016},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {51},
+number = {4},
+issn = {0362-1340},
+url = {https://doi.org/10.1145/2954679.2872414},
+doi = {10.1145/2954679.2872414},
+abstract = {Industry is building larger, more complex, manycore processors on the back of strong institutional knowledge, but academic projects face difficulties in replicating that scale. To alleviate these difficulties and to develop and share knowledge, the community needs open architecture frameworks for simulation, synthesis, and software exploration which support extensibility, scalability, and configurability, alongside an established base of verification tools and supported software. In this paper we present OpenPiton, an open source framework for building scalable architecture research prototypes from 1 core to 500 million cores. OpenPiton is the world's first open source, general-purpose, multithreaded manycore processor and framework. OpenPiton leverages the industry hardened OpenSPARC T1 core with modifications and builds upon it with a scratch-built, scalable uncore creating a flexible, modern manycore design. In addition, OpenPiton provides synthesis and backend scripts for ASIC and FPGA to enable other researchers to bring their designs to implementation. OpenPiton provides a complete verification infrastructure of over 8000 tests, is supported by mature software tools, runs full-stack multiuser Debian Linux, and is written in industry standard Verilog. Multiple implementations of OpenPiton have been created including a taped-out 25-core implementation in IBM's 32nm process and multiple Xilinx FPGA prototypes.},
+journal = {SIGPLAN Not.},
+month = mar,
+pages = {217–232},
+numpages = {16},
+keywords = {manycore, multicore, open-source}
+}
+
+@article{OpenPiton,
+author = {Balkind, Jonathan and McKeown, Michael and Fu, Yaosheng and Nguyen, Tri and Zhou, Yanqi and Lavrov, Alexey and Shahrad, Mohammad and Fuchs, Adi and Payne, Samuel and Liang, Xiaohua and Matl, Matthew and Wentzlaff, David},
+title = {OpenPiton: An Open Source Manycore Research Framework},
+year = {2016},
+issue_date = {May 2016},
+publisher = {Association for Computing Machinery},
+address = {New York, NY, USA},
+volume = {44},
+number = {2},
+issn = {0163-5964},
+url = {https://doi.org/10.1145/2980024.2872414},
+doi = {10.1145/2980024.2872414},
+abstract = {Industry is building larger, more complex, manycore processors on the back of strong institutional knowledge, but academic projects face difficulties in replicating that scale. To alleviate these difficulties and to develop and share knowledge, the community needs open architecture frameworks for simulation, synthesis, and software exploration which support extensibility, scalability, and configurability, alongside an established base of verification tools and supported software. In this paper we present OpenPiton, an open source framework for building scalable architecture research prototypes from 1 core to 500 million cores. OpenPiton is the world's first open source, general-purpose, multithreaded manycore processor and framework. OpenPiton leverages the industry hardened OpenSPARC T1 core with modifications and builds upon it with a scratch-built, scalable uncore creating a flexible, modern manycore design. In addition, OpenPiton provides synthesis and backend scripts for ASIC and FPGA to enable other researchers to bring their designs to implementation. OpenPiton provides a complete verification infrastructure of over 8000 tests, is supported by mature software tools, runs full-stack multiuser Debian Linux, and is written in industry standard Verilog. Multiple implementations of OpenPiton have been created including a taped-out 25-core implementation in IBM's 32nm process and multiple Xilinx FPGA prototypes.},
+journal = {SIGARCH Comput. Archit. News},
+month = mar,
+pages = {217–232},
+numpages = {16},
+keywords = {manycore, multicore, open-source}
+}
+
+@software{opentitan,
+  author       = {{lowRISC CIC and OpenTitan contributors}},
+  title        = {OpenTitan: Open source silicon Root of Trust},
+  url          = {https://github.com/lowRISC/opentitan},
+  note         = {Open source silicon Root of Trust repository (Apache-2.0)} ,
+}
+
+@software{XUANTIE_C910,
+  author       = {{XUANTIE-RV Contributors}},
+  title        = {OpenC910 Core},
+  subtitle     = {OpenXuantie 64-bit RISC-V C910 Processor RTL},
+  url          = {https://github.com/XUANTIE-RV/openc910},
+  license      = {Apache-2.0},
+}
+
+
+@software{veer_eh2,
+  author       = {{CHIPS Alliance Contributors}},
+  title        = {VeeR EH2 RISC-V Core},
+  subtitle     = {32-bit, dual-threaded, dual-issue, superscalar RISC-V RTL design},
+  url          = {https://github.com/chipsalliance/Cores-VeeR-EH2},
+  license      = {Apache-2.0},
+}

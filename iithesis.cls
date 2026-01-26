@@ -32,6 +32,10 @@
 %%%%% PAKIETY WYMAGANE I DOLACZANE PRZEZ KLASE
 % babel, geometry, fontenc, hyperref, ifthen, titling
 % indentfirst, polski (jezeli iithesis zaladowano z opcja 'polish')
+
+\usepackage[backend=biber,style=numeric,sorting=none]{biblatex}
+\addbibresource{citations.bib}
+
 \NeedsTeXFormat{LaTeX2e}
 \ProvidesClass{iithesis}
 

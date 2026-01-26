@@ -1,7 +1,6 @@
 % Opcje klasy 'iithesis' opisane sa w komentarzach w pliku klasy. Za ich pomoca
 % ustawia sie przede wszystkim jezyk oraz rodzaj (lic/inz/mgr) pracy.
 \documentclass[shortabstract, inz]{iithesis}
-
 %%%%% DANE DO STRONY TYTUĹOWEJ
 % Niezaleznie od jezyka pracy wybranego w opcjach klasy, tytul i streszczenie
 % pracy nalezy podac zarowno w jezyku polskim, jak i angielskim.
@@ -10,15 +9,15 @@
 % polecenia \fmlinebreak.
 \polishtitle    {Studium implementacji obsługi instrukcji \fmlinebreak force/release w Verilatorze}
 \englishtitle   {A study of implementing handling of force/release statements in Verilator}
+
 \polishabstract {Instrukcje \texttt{force} i \texttt{release} zdefiniowane w standardzie IEEE 1364-2001~\cite{IEEE1364-2001} języka Verilog umożliwiają wymuszenie wartości sygnałów w symulacji. W pracy przedstawiono różne implementacje obsługi tych instrukcji w otwartoźródłowym symulatorze Verilator, w tym opracowane przez autora niniejszej pracy. Opisano semantykę działania instrukcji \texttt{force}/\texttt{release}, a także omówiono szczegóły implementacji oraz testy poprawności działania.}
 \englishabstract{The \texttt{force} and \texttt{release} statements defined in the IEEE 1364-2001~\cite{IEEE1364-2001} Verilog standard allow forcing signal values in simulation. This thesis presents various implementations of these statements in the open-source Verilator simulator, including those developed by the author of this thesis. The semantics of the \texttt{force}/\texttt{release} statements are described, along with details of the implementation and correctness tests.}
 % w pracach wielu autorow nazwiska mozna oddzielic poleceniem \and
 \author         {Artur Bieniek}
 % w przypadku kilku promotorow, lub koniecznosci podania ich afiliacji, linie
 % w ponizszym poleceniu mozna zlamac poleceniem \fmlinebreak
-\advisor        {mgr Kuba Nowak}
-%\date          {}                     % Data zlozenia pracy
-%TODO: data jaka ma być?
+\advisor        {mgr inż. Kuba Nowak}
+\date          {5 lutego 2026}                     % Data zlozenia pracy
 % Dane do oswiadczenia o autorskim wykonaniu
 \transcriptnum {347165}                     % Numer indeksu
 \advisorgen    {mgr. Kuby Nowaka} % Nazwisko promotora w dopelniaczu
@@ -31,7 +30,44 @@
 \usepackage{minted}
 \usepackage{fancyhdr}
 \usepackage{tabularx}
-%%%%% WĹASNE DEFINICJE I POLECENIA
+\usepackage{booktabs}
+\usepackage{float}
+
+% --- Tabele z auto-liczeniem zmian [%] i znakiem + / bez znaku dla 0 ---
+
+\usepackage{xfp}      % obliczenia zmiennoprzecinkowe: \fpeval{...}
+\usepackage{siunitx}  % formatowanie liczb: \num{...}
+
+\sisetup{
+  round-mode      = places,
+  round-precision = 2,
+  round-pad       = true,
+  output-decimal-marker = {.} % zmień na {,} jeśli wolisz przecinek
+}
+
+% (impl - ref) / ref * 100, zaokrąglone do 2 miejsc
+% dodatnie: +X.XX, ujemne: -X.XX, zero: 0.00 (bez znaku)
+\newcommand{\pctchangeSigned}[2]{%
+  \ifnum\fpeval{round(((#2-#1)/#1)*100, 2) > 0}=1
+    +\num{\fpeval{round(((#2-#1)/#1)*100, 2)}}%
+  \else
+    \ifnum\fpeval{round(((#2-#1)/#1)*100, 2) < 0}=1
+      \num{\fpeval{round(((#2-#1)/#1)*100, 2)}}%
+    \else
+      \num{0.00}%
+    \fi
+  \fi
+}
+
+% Wiersz: label/design, Tref, Rref, Timpl, Rimpl
+% Wypisuje dane + oblicza dwie zmiany [%] bez duplikowania liczb.
+\newcommand{\benchrow}[5]{%
+#1 & #2 & #3 & #4 & #5 & \pctchangeSigned{#2}{#4} & \pctchangeSigned{#3}{#5} \\ \hline
+}
+
+\usepackage[backend=biber,style=numeric,sorting=none]{biblatex}
+\addbibresource{citations.bib}
+%%%%% WŁASNE DEFINICJE I POLECENIA
 %
 %\theoremstyle{definition} \newtheorem{definition}{Definition}[chapter]
 %\theoremstyle{remark} \newtheorem{remark}[definition]{Observation}
@@ -48,7 +84,7 @@
     \fancyhead[LE,RO]{\thepage}
     \fancyhead[LO]{\nouppercase{\rightmark}}
     \fancyhead[RE]{\nouppercase{\leftmark}}
-    \fancyfoot[C]{\parbox{\textwidth}{\centering\footnotesize\verilatorfootnote}}
+    \fancyfoot[C]{\parbox{\textwidth}{\raggedright\footnotesize\verilatorfootnote}}
     \renewcommand{\headrulewidth}{0.4pt}
     \renewcommand{\footrulewidth}{0.4pt}
 }
@@ -56,41 +92,52 @@
 %%%%% POCZÄTEK ZASADNICZEGO TEKSTU PRACY
 
 \chapter{Wprowadzenie}
-Sekcja 10.6 (\textit{Procedural continuous assignments}) standardu IEEE 1364-2001~\cite{IEEE1364-2001} języka Verilog definiuje instrukcje \texttt{force} i \texttt{release} oraz \texttt{assign} i \texttt{deassign}, które umożliwiają kombinacyjne proceduralne przypisanie.
-Takie przypisanie zachowuje się tak jak zwykłe przypisanie kombinacyjne (\texttt{assign}) w Verilogu, z tą różnicą, że przypisanie to jest wykonywane w kontekście procedury (np. w ramach bloku \texttt{initial} lub \texttt{always}), jest aktywne tylko od wykonania instrukcji \texttt{force} lub \texttt{assign} i tylko do wykonania instrukcji \texttt{release} lub \texttt{deassign}.
 
-Instrukcje te są często wykorzystywane w testach do wymuszania określonych wartości sygnałów w trakcie symulacji, co pozwala na testowanie różnych scenariuszy działania projektowanego układu cyfrowego. Pozwalają one na wymuszenie wartości dowolnego sygnału wewnątrz dowolnego modułu, a nie tylko sygnałów dostępnych jako porty modułu.
+Verilog i SystemVerilog są popularnymi językami opisu sprzętu (HDL -- \textit{Hardware Description Language}), szeroko stosowanymi w projektowaniu, weryfikacji oraz symulacji układów cyfrowych. Umożliwiają one opis projektu na poziomie RTL (\textit{Register Transfer Level}), gdzie zachowanie układu definiowane jest na poziomie przepływu danych pomiędzy rejestrami. Następnie narzędzia syntezy przekształcają taki opis do postaci struktury złożonej z przerzutników, zatrzasków i bramek logicznych. Istotną zaletą podejścia RTL jest możliwość szybkiej weryfikacji projektu poprzez symulację komputerową na wczesnym etapie prac.
 
-W symulatorach sterowanych zdarzeniami, gdzie każda zmiana wartości sygnału jest zdarzeniem aktualizacji (ang. \textit{update event}), na które każdy proces reaguje ewaluacją, instrukcje \texttt{force} i \texttt{release} są standardowo obsługiwane. Jednak w przypadku symulatorów opartych na kompilacji do kodu C++, takich jak Verilator, implementacja tych instrukcji wymaga dodatkowych mechanizmów.
+\section{Instrukcje \texttt{force}/\texttt{release} w weryfikacji układów}
 
-Celem niniejszej pracy jest zbadanie możliwości implementacji instrukcji \texttt{force} i \texttt{release} w otwartoźródłowym symulatorze Verilator. Praca ta obejmuje analizę standardu Verilog/SystemVerilog, projektowanie i implementację mechanizmu obsługi tych instrukcji oraz testowanie poprawności i wydajności zaimplementowanego rozwiązania.
+Standard IEEE~1364-2001~\cite{IEEE1364-2001} (Verilog) w sekcji 10.6 (\textit{Procedural continuous assignments}) definiuje instrukcje \texttt{force} i \texttt{release} oraz \texttt{assign} i \texttt{deassign}. Mechanizmy te umożliwiają realizację proceduralnego przypisania o charakterze kombinacyjnym. W odróżnieniu od zwykłego przypisania ciągłego (\texttt{assign}), przypisanie proceduralne jest aktywowane w kontekście procedury (np. w bloku \texttt{initial} lub \texttt{always}) i obowiązuje od wykonania instrukcji \texttt{force} (lub \texttt{assign}) aż do wykonania \texttt{release} (lub \texttt{deassign}).
 
-Przedstawione zostaną różne podejścia do implementacji, a także omówione zostaną wyzwania napotkane podczas realizacji tego zadania. Dla każdego z podejść do implementacji zaprezentowane zostaną wyniki testów oraz wnioski dotyczące efektywności i użyteczności zaimplementowanego mechanizmu.
+Instrukcje \texttt{force}/\texttt{release} są szczególnie użyteczne w testach, gdzie służą do czasowego wymuszania określonych wartości sygnałów podczas symulacji. Pozwala to testować scenariusze trudne do uzyskania wyłącznie poprzez sterowanie portami wejściowymi, w tym również wymuszać wartości sygnałów wewnętrznych w hierarchii projektu.
 
-Choć instrukcje \texttt{force}/\texttt{release} zostały wprowadzone w Verilogu, już w standardzie IEEE 1364-2001~\cite{IEEE1364-2001}, to standard SystemVerilog~\cite{IEEE1800-2023} również je zawiera i definiuje ich semantykę. Jako iż jest to najnowszy standard języka, a Verilator docelowo dąży do pełnego wsparcia dla SystemVerilog, w niniejszej pracy skupiono się na semantyce tych instrukcji zgodnej ze standardem IEEE1800-2023~\cite{IEEE1800-2023}.
+\section{Verilator jako kontekst i motywacja pracy}
 
-Specyfikacja IEEE1800-2023~\cite{IEEE1800-2023} jest zdefiniowana w oparciu o model wykonania bazujący na dyskretnych zdarzeniach i podaje referencyjny algorytm symulatora opartego na tym modelu. Standard ten zezwala jednak na pełną dowolność w doborze algorytmów zastosowanych w implementacji symulatora, o ile obserwowalne zachowanie takiego symulatora jest identyczne jak w przypadku referencyjnego algorytmu. Verilator jest symulatorem opartym na kompilacji do kodu C++, który nie korzysta z modelu zdarzeniowego. Umożliwia to znaczne przyspieszenie symulacji kosztem złożoności implementacji i konieczności zapewnienia zgodności zachowania z modelem zdarzeniowym.
+W klasycznych symulatorach sterowanych zdarzeniami każda zmiana wartości sygnału powoduje powstanie zdarzenia aktualizacji (ang. \textit{update event}), które może wyzwalać ponowną ewaluację procesów wrażliwych na ten sygnał. W takim modelu mechanizmy \texttt{force} i \texttt{release} są naturalnie powiązane z harmonogramowaniem zdarzeń i rozstrzyganiem priorytetów pomiędzy różnymi źródłami sterowania sygnałem.
 
-Prezentowane w pracy implementacje instrukcji \texttt{force}/\texttt{release} w Verilatorze mają na celu zapewnienie zgodności zachowania z modelem zdarzeniowym, pomimo braku bezpośredniego wykorzystania tego modelu w samej implementacji symulatora.
+Verilator~\cite{Verilator} jest natomiast otwartoźródłowym symulatorem opartym na kompilacji opisu sprzętu do kodu języka C++, który następnie jest kompilowany i wykonywany jako program natywny. Podejście to zapewnia wysoką wydajność symulacji, jednak nie opiera się bezpośrednio na klasycznym, zdarzeniowym kernelu symulacyjnym. W konsekwencji implementacja instrukcji \texttt{force}/\texttt{release} w Verilatorze wymaga zaprojektowania dodatkowych mechanizmów, które zapewnią zgodność obserwowalnego zachowania z semantyką języka.
+
+\section{Cel i zakres pracy}
+
+Celem niniejszej pracy jest zbadanie możliwości implementacji instrukcji \texttt{force} i \texttt{release} w otwartoźródłowym symulatorze Verilator. Praca obejmuje analizę wymagań wynikających ze standardu opisującego język Verilog/SystemVerilog, projekt mechanizmu obsługi tych instrukcji, jego implementację oraz weryfikację poprawności i wpływu na wydajność symulacji. Przedstawione zostaną alternatywne podejścia implementacyjne, omówione zostaną napotkane problemy oraz zaprezentowane wyniki testów wraz z wnioskami dotyczącymi użyteczności i efektywności zaproponowanych rozwiązań.
+
+\section{Przyjęta semantyka i odniesienie do modelu IEEE}
+
+Choć instrukcje \texttt{force}/\texttt{release} zostały wprowadzone w Verilogu już w standardzie IEEE~1364-2001~\cite{IEEE1364-2001}, standard SystemVerilog (IEEE~1800-2023)~\cite{IEEE1800-2023} również je zawiera i definiuje ich semantykę. Ponieważ IEEE~1800-2023 jest najnowszym standardem języka, a Verilator docelowo dąży do możliwie pełnego wsparcia SystemVerilog, w niniejszej pracy przyjęto semantykę instrukcji \texttt{force}/\texttt{release} zgodną ze standardem IEEE~1800-2023~\cite{IEEE1800-2023}.
+
+Specyfikacja IEEE~1800-2023~\cite{IEEE1800-2023} opisuje semantykę SystemVerilog w oparciu o model wykonania bazujący na dyskretnych zdarzeniach oraz przedstawia referencyjny, abstrakcyjny algorytm symulacji. Algorytm ten określa porządek przetwarzania zdarzeń oraz zależności czasowe pomiędzy regionami symulacyjnymi. Standard dopuszcza jednak dowolność w doborze algorytmów i struktur danych w implementacji symulatora, pod warunkiem że jego obserwowalne zachowanie pozostaje zgodne z zachowaniem wynikającym z algorytmu referencyjnego.
+
+W związku z tym prezentowane w pracy implementacje instrukcji \texttt{force}/\texttt{release} w Verilatorze mają na celu odwzorowanie zachowania zgodnego z modelem zdarzeniowym IEEE, pomimo że sam Verilator nie realizuje tego modelu bezpośrednio w postaci klasycznego, zdarzeniowego kernela symulacyjnego.
+
+\section{Geneza pracy i kontekst realizacji}
+Część inżynierska niniejszej pracy została zrealizowana w ramach pracy zawodowej autora w firmie Antmicro, zajmującej się projektowaniem i weryfikacją systemów elektronicznych oraz rozwojem narzędzi open-source. Prace badawczo-inżynierskie prowadzone w tym kontekście obejmowały rozwój implementacji obsługi instrukcji force/release w symulatorze Verilator. Jednocześnie całość tekstu pracy dyplomowej, w tym dobór zakresu, analiza problemu, opis rozwiązań oraz wnioski, stanowi samodzielne opracowanie autora.
 
 \thispagestyle{verilatornote}
 
 \chapter{Wprowadzenie do semantyki przypisań}
 
 \section{Wstęp}
-Języki opisu sprzętu, takie jak Verilog i SystemVerilog, oferują różnorodne mechanizmy przypisywania wartości sygnałom, które różnią się semantyką oraz zastosowaniem. Zrozumienie tych mechanizmów jest kluczowe zarówno dla prawidłowego modelowania układów cyfrowych, jak i dla implementacji symulatorów wspierających te konstrukcje językowe. W niniejszym rozdziale przedstawiono systematyczny przegląd typów przypisań występujących w standardzie SystemVerilog, ze szczególnym uwzględnieniem ich zachowania w kontekście symulacji.
-
-Omówione zostaną kolejno:
+Języki opisu sprzętu, takie jak Verilog i SystemVerilog, oferują różnorodne mechanizmy przypisywania wartości sygnałom, które różnią się semantyką oraz zastosowaniem. Zrozumienie tych mechanizmów jest kluczowe zarówno dla prawidłowego modelowania układów cyfrowych, jak i dla implementacji symulatorów wspierających te konstrukcje językowe. W niniejszym rozdziale przedstawiono systematyczny przegląd typów przypisań występujących w standardzie SystemVerilog, ze szczególnym uwzględnieniem ich zachowania w kontekście symulacji. Omówione zostaną kolejno:
 \begin{itemize}
-\item przypisania kombinacyjne, które modelują bezpośrednie połączenia sygnałów;
-\item przypisania proceduralne, wykonywane jednokrotnie w ramach bloków proceduralnych;
-\item przypisania proceduralne kombinacyjne realizowane za pomocą instrukcji \fmlinebreak \texttt{assign}/\texttt{deassign} i \texttt{force}/\texttt{release}.
+\item przypisania kombinacyjne, które modelują syntezowalne bezpośrednie połączenia sygnałów;
+\item przypisania proceduralne, wykonywane jednokrotnie w ramach bloków proceduralnych - syntezowalne jako przerzutniki lub zatrzaski; 
+\item przypisania proceduralne kombinacyjne realizowane za pomocą instrukcji \linebreak \texttt{assign}/\texttt{deassign} i \texttt{force}/\texttt{release} - niesyntezowalne.
 \end{itemize}
 
 Te ostatnie stanowią szczególnie istotny element testowania układów cyfrowych, umożliwiając wymuszanie wartości sygnałów w dowolnym momencie symulacji. Zrozumienie hierarchii priorytetów między różnymi typami przypisań oraz ich wzajemnych interakcji jest niezbędne do prawidłowej implementacji mechanizmu \texttt{force}/\texttt{release} w symulatorze Verilator.
 
 \section{Przypisanie kombinacyjne}
-(System)Verilog jest językiem opisu sprzętu - w kontekście sprzętu, przypisanie kombinacyjne jest bezpośrednim połączeniem prawej strony przypisania z lewą. W kontekście symulacji, powinno zachowywać się identycznie - lewa strona przypisania powinna wskazywać przy każdym odczycie wartość identyczną jak prawa. Przykładowo, następujące przypisanie kombinacyjne:
+W kontekście sprzętu, przypisanie kombinacyjne opisuje syntezowalne bezpośrednie połączenie obu sygnałów. W kontekście symulacji, powinno zachowywać się identycznie - lewa strona przypisania powinna wskazywać przy każdym odczycie wartość identyczną jak prawa. Przykładowo, następujące przypisanie kombinacyjne:
 \begin{minted}{verilog}
   assign out = a & b;
 \end{minted}
@@ -99,26 +146,48 @@ spowoduje, że sygnał \texttt{out} będzie przy każdym odczycie równy iloczyn
 Innym sposobem przypisania kombinacyjnego jest deklaracja sieci (ang. \textit{net}):
 
 \begin{minted}{verilog}
-    module top (
-            input a,
-            input b
-        );
-        wire [1:0] out = {a, b};
+    module top (input a, input b);
+        wire [1:0] out = {a, b}; // deklaracja sieci z inicjalizacją
         initial $monitor("%b", out);
     endmodule
 \end{minted}
 W tym przykładzie, sygnał \texttt{out} jest przypisany za pomocą przypisania ciągłego do konkatenacji sygnałów \texttt{a} i \texttt{b}. Wartości obserwowane na monitorze w kolejnych krokach symulacji będą odzwierciedlać konkatenację wartości \texttt{a} i \texttt{b}.
-
-W symulatorach sterowanych zdarzeniami, zmiana wartości sygnału \texttt{a} lub \texttt{b} generuje zdarzenie, które powoduje ponowne obliczenie wartości \texttt{out}.
-
-Inaczej sprawa wygląda w symulatorach opartych na kompilacji do kodu C++, takich jak Verilator. W takich symulatorach, przypisania kombinacyjne są zazwyczaj implementowane jako funkcje, które są wywoływane w każdej iteracji pętli symulacyjnej, aby zaktualizować wartości sygnałów na podstawie aktualnych wartości sygnałów wejściowych.
 
 \section{Przypisanie proceduralne}
 Standardowe przypisanie proceduralne w Verilogu/SystemVerilogu, takie jak:
 \begin{minted}{verilog}
     out = a & b;
 \end{minted}
-w symulacji jest wykonywane tylko raz, w momencie wykonania instrukcji. Jeśli mowa o sprzęcie, narzędzie do syntezy analizuje zależności sygnałów i warunki przypisań, a następnie na tej podstawie wnioskuje \textbf{układy kombinacyjne}, \textbf{przerzutniki} lub \textbf{zatrzaski}. Wartość sygnału \texttt{out} nie jest automatycznie aktualizowana w odpowiedzi na zmiany wartości \texttt{a} lub \texttt{b}. Aby zaktualizować wartość \texttt{out}, instrukcja musi zostać ponownie wykonana, na przykład w ramach bloku \texttt{always} reagującego na zmiany sygnałów.
+jest analizowane przez narzędzie do syntezy, które na tej podstawie wnioskuje:
+\begin{itemize}
+    \item układy kombinacyjne gdy 
+    \begin{itemize}
+        \item każde wyjście jest przypisane dla wszystkich możliwych przypadków
+        \item wartość wyjścia zależy tylko i wyłącznie od aktualnych wartości wejść
+        \item nie ma żadnego wewnętrznego stanu przechowywanego między kolejnymi ewaluacjami
+    \end{itemize}
+    \item zatrzaski gdy
+    \begin{itemize}
+        \item sygnał nie jest przypisany w każdej możliwej ścieżce wykonania
+        \item blok, w którym występuje przypisanie, nie jest wyzwalany przez sygnały zegarowe
+    \end{itemize}
+    \item przerzutniki gdy
+    \begin{itemize}
+        \item blok, w którym występuje przypisanie, jest wyzwalany przez sygnały zegarowe
+        \item wartość sygnału zmienia się tylko w odpowiedzi na zbocza sygnału zegarowego
+        \item pomiędzy zboczami sygnału zegarowego stan jest przechowywany
+    \end{itemize}
+    \item multipleksery dla
+    \begin{itemize}
+        \item operatora ternarnego: \texttt{warunek ? wartosc\_a : wartosc\_b}
+        \item instrukcji warunkowej: \texttt{wartosc\_a if warunek else wartosc\_b}
+        \item instrukcji \texttt{case}
+    \end{itemize}
+    \item inne konstrukcje, dostępne w danym procesie produkcyjnym lub na danym układzie FPGA, takie jak liczniki, pamięci, układy arytmetyczne itp.
+\end{itemize}
+W symulacji przypisanie to jest wykonywane tylko raz, w momencie wykonania instrukcji (podczas wywoływania zdarzenia w przypadku symulatorów sterowanych zdarzeniami lub podczas przejścia przez tę instrukcję w skompilowanym kodzie w przypadku Verilatora). Wartość sygnału \texttt{out} nie jest automatycznie aktualizowana w odpowiedzi na zmiany wartości \texttt{a} lub \texttt{b}. Aby zaktualizować wartość \texttt{out}, instrukcja musi zostać ponownie wykonana, na przykład w ramach bloku \texttt{always} reagującego na zmiany sygnałów.
+
+Przypisania proceduralne są szczególnie użyteczne w przypadku projektowania układów sekwencyjnych, gdzie stan układu jest przechowywany i aktualizowany w odpowiedzi na sygnały zegarowe lub inne zdarzenia. Pozwalają one na modelowanie złożonych zachowań, które nie mogą być łatwo wyrażone za pomocą prostych przypisań kombinacyjnych. Zachowanie układu można opisywać wówczas jak ciąg instrukcji wykonywanych sekwencyjnie - choć w rzeczywistości tak nie jest, zachowanie jest identyczne.
 
 Obecnie w Verilatorze przypisania proceduralne są realizowane poprzez bezpośrednie przypisania w kodzie C++ wygenerowanym z kodu Verilog/SystemVerilog. Oznacza to, że wartość sygnału jest aktualizowana wtedy, gdy odpowiednia instrukcja jest wykonywana w ramach pętli symulacyjnej.
 
@@ -152,7 +221,6 @@ W oczywisty sposób, przypisanie \texttt{force} nie jest syntezowalne, ponieważ
 
 Poniższy przykład dokładnie ilustruje hierarchię przypisań:
 
-% TODO zapytać Kuby jak ponumerować i podpisać kody źródłowe
 \noindent
 \begin{tabular}{@{}p{0.6\linewidth}@{\hspace{1em}}p{0.34\linewidth}@{}}
 \textbf{Kod} & \textbf{Wynik symulacji}\\ \hline
@@ -331,11 +399,11 @@ zostanie przekształcony na:
 
 Ta implementacja poprawnie obsługuje przypadek warunkowego wykonywania instrukcji \texttt{force} oraz przechodzi z powodzeniem wszystkie testy z zestawu testów Verilatora, które używają instrukcji \texttt{force}/\texttt{release}.
 
-Ma ona jednak bardzo poważną wadę: bardzo niską wydajność, zarówno czasową jak i pamięciową. Każde przypisanie \texttt{force} wymaga dodatkowej zmiennej \linebreak \texttt{<v>\_\_VforceEn<ID>}, a każde odczytanie sygnału z wymuszeniem wymaga złożonego wyrażenia. Każdy sygnał z przypisaniami \texttt{force} powoduje powiększenie drzewa AST o czynnik rzędu $O(n*(m+o))$ , gdzie $n$ jest liczbą przypisań \texttt{force}, $m$ liczbą odczytów sygnału, natomiast $o$ liczbą instrukcji \texttt{release} wykonywanych do tego sygnału gdy jest on siecią.
+Ma ona jednak bardzo poważną wadę: bardzo niską wydajność, zarówno czasową jak i pamięciową. Każde przypisanie \texttt{force} wymaga dodatkowej zmiennej \linebreak \texttt{<v>\_\_VforceEn<ID>}, a każde odczytanie sygnału z wymuszeniem wymaga złożonego wyrażenia. Każdy sygnał z przypisaniami \texttt{force} powoduje powiększenie drzewa AST o czynnik rzędu $O(n*(m+o))$ , gdzie $n$ jest liczbą przypisań \texttt{force}, $m$ liczbą odczytów sygnału, natomiast $o$ liczbą instrukcji \texttt{release} wykonywanych do tego sygnału gdy nie jest on siecią.
 
 Wydawać by się mogło, że w praktyce zarówno liczba przypisań \texttt{force}/\texttt{release} do jednego sygnału jak i liczba jego odczytów nie powinny być duże. Tak rzeczywiście jest - z tego powodu obszerny zestaw testów Verilatora nie sprawia tej implementacji większego problemu. Pojawia się jednak problem ze strukturami typu \texttt{struct packed} - przed V3Force następuje przejście \texttt{V3Width}, które każdą taką strukturę zastępuje wektorem bitów. W przypadku struktury z wieloma polami oraz podstrukturami, taki wektor bitów może osiągać szerokość rzędu dziesiątek tysięcy bitów.
 
-Przypadkiem projektu układu cyfrowego, który obnaża ten problem jest \href{https://github.com/chipsalliance/caliptra-rtl}{Caliptra}, w której po transformacji dokonanej przez \texttt{V3Width} struktura \linebreak\texttt{caliptra\_top\_tb.caliptra\_top\_dut.key\_vault1.kv\_reg\_hwif\_in} jest zamieniana na wektor 13923 bitów, do którego jest wykonywane
+Przypadkiem projektu układu cyfrowego, który obnaża ten problem jest Caliptra~\cite{caliptra}, w której po transformacji dokonanej przez \texttt{V3Width} struktura \linebreak\texttt{caliptra\_top\_tb.caliptra\_top\_dut.key\_vault1.kv\_reg\_hwif\_in} jest zamieniana na wektor 13923 bitów, do którego jest wykonywane
 \begin{itemize}
     \item 22586 przypisań \texttt{force}
     \item 2736 przypisań \texttt{release}
@@ -476,7 +544,7 @@ Wyżej opisana implementacja jest dostępna w gałęzi \href{https://github.com/
 Inną implementacją, którą opracowałem, jest podejście oparte na strukturach danych zaimplementowanych w C++ i wykorzystywanych w czasie działania symulacji. W tej implementacji wykorzystałem struktury do reprezentacji stanów sygnałów oraz ich wymuszeń, co pozwoliło na uproszczenie logiki przetwarzania i zwiększenie wydajności. Zaimplementowana struktura wykorzystuje posortowany wektor do przechowywania aktywnych przypisań \texttt{force}, co umożliwia szybkie wyszukiwanie i aktualizację przypisań. Każde przypisanie \texttt{force} jest reprezentowane jako obiekt zawierający informacje o zakresie bitów, które są objęte tym przypisaniem oraz wartości która jest przypisana. Taki wektor jest trzymany zawsze jako posortowany według zakresów bitów, co umożliwia wyszukiwanie pasujących przypisań za pomocą wyszukiwania binarnego w czasie $O(log\ k)$, gdzie $k$ jest liczbą aktywnych przypisań \texttt{force}.
 W momencie wykonania instrukcji \texttt{release}:
 \begin{itemize}
-    \item jeżeli lewa strona instrukcji jest siecią, to dokonywany jest odczyt jej aktualnej wartości, która zostaje przypisana do sygnału
+    \item jeżeli lewa strona instrukcji nie jest siecią, to dokonywany jest odczyt jej aktualnej wartości, która zostaje przypisana do sygnału
     \item znajdowane są pasujące przypisania \texttt{force} w wektorze aktywnych przypisań (maksymalnie 2)
     \item granice pasujących przypisań są modyfikowane, a jeśli któreś z nich jest całkowicie zwolnione, to jest usuwane z wektora
 \end{itemize}
@@ -499,42 +567,42 @@ Poniższy kod:
 \end{minted}
 zostanie przekształcony na:
 \begin{minted}{verilog}
-    logic t.r;
-    logic t.r__VforceRhs[1:0];
+ logic t.r;
+ logic t.r__VforceRhs[1:0];
 
-    ???? // CDTYPE 'VlForceVec'
-     t.r__VforceVec
-    ???? // CDTYPE 'VlForceVec'
-    ;
-    initial begin
-        (t.r__VforceRhs[32'h0]) = 1'h1;
-        $_CSTMT(t.r__VforceVec.addForce(0, 0, 0);
-        );
-        (t.r__VforceRhs[32'h1]) = 1'h0;
-        $_CSTMT(t.r__VforceVec.addForce(0, 0, 1);
-        );
-        t.r = $_CEXPR(VlForceRead<CData/*0:0*/>($_CAST(
-                                                       t.r), 
-                                                t.r__VforceVec, &(
-                                                                  (t.r__VforceRhs
-                                                                   [
-                                                                   32'h0]))));
-        $_CSTMT(t.r__VforceVec.release(0, 0);
-        );
-        $display("%d", $_CEXPR(VlForceRead<CData/*0:0*/>(
-                                                         $_CAST(
-                                                                t.r), 
-                                                         t.r__VforceVec, &(
-                                                                           (t.r__VforceRhs
-                                                                            [
-                                                                            32'h0])))));
-    end
-    always @(*) begin
-        (t.r__VforceRhs[32'h1]) = 1'h0;
-    end
-    always @(*) begin
-        (t.r__VforceRhs[32'h0]) = 1'h1;
-    end
+ ???? // CDTYPE 'VlForceVec'
+  t.r__VforceVec
+ ???? // CDTYPE 'VlForceVec'
+ ;
+ initial begin
+     (t.r__VforceRhs[32'h0]) = 1'h1;
+     $_CSTMT(t.r__VforceVec.addForce(0, 0, 0);
+     );
+     (t.r__VforceRhs[32'h1]) = 1'h0;
+     $_CSTMT(t.r__VforceVec.addForce(0, 0, 1);
+     );
+     t.r = $_CEXPR(VlForceRead<CData/*0:0*/>($_CAST(
+                               t.r), 
+                           t.r__VforceVec, &(
+                                       (t.r__VforceRhs
+                                     [
+                                     32'h0]))));
+     $_CSTMT(t.r__VforceVec.release(0, 0);
+     );
+     $display("%d", $_CEXPR(VlForceRead<CData/*0:0*/>(
+                                 $_CAST(
+                                     t.r), 
+                                 t.r__VforceVec, &(
+                                          (t.r__VforceRhs
+                                           [
+                                           32'h0])))));
+ end
+ always @(*) begin
+     (t.r__VforceRhs[32'h1]) = 1'h0;
+ end
+ always @(*) begin
+     (t.r__VforceRhs[32'h0]) = 1'h1;
+ end
 \end{minted}
 
 \begin{center}
@@ -547,7 +615,61 @@ zostanie przekształcony na:
 
 Jak widać w powyższym fragmencie kodu, instrukcje \texttt{force} są zamieniane na wywołania metody \texttt{addForce} klasy \texttt{VlForceVec}, natomiast instrukcje \texttt{release} są zamieniane na wywołania metody \texttt{release} tej klasy. Odczyty sygnałów do których wykonywane są przypisania \texttt{force} są zamieniane na wywołania funkcji \texttt{VlForceRead}, która przyjmuje oryginalną wartość sygnału, obiekt klasy \texttt{VlForceVec} przechowujący informacje o aktywnych przypisaniach \texttt{force} oraz wskaźnik na tablicę prawych stron przypisań \texttt{force}.
 
-Wyżej opisana implementacja jest dostępna w gałęzi \href{https://github.com/ArturBieniek4/verilator/tree/81646-force-rework-v5}{81646-force-rework-v5}.
+Poniżej znajduje się porównanie wydajności wykonane przy użyciu narzędzia RTLMeter~\cite{rtlmeter}. Najnowszy dostępny Verilator jest porównywany z wyżej opisaną implementacją na niego nałożoną.
+
+\begin{table}[H]
+\small
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}|l|c|c|c|c|c|c|}
+\hline
+& \multicolumn{2}{c|}{Referencja}
+& \multicolumn{2}{c|}{Implementacja}
+& \multicolumn{2}{c|}{Zmiana [\%]} \\
+\hline
+Design
+& Czas [s] & RAM [MB]
+& Czas [s] & RAM [MB]
+& Czas [\%] & RAM [\%] \\
+\hline
+\benchrow{NVDLA\cite{NVDLA}}{1750.72}{8831.61}{1829.60}{8836.99}
+\benchrow{OpenPiton\cite{OpenPiton}}{558.12}{2707.13}{583.44}{2705.78}
+\benchrow{OpenTitan\cite{opentitan}}{369.50}{1844.17}{377.22}{1845.45}
+\benchrow{VeeR\cite{veer_eh2}}{208.56}{857.07}{194.90}{856.72}
+\benchrow{Vortex\cite{vortex}}{283.98}{1142.52}{284.10}{1145.18}
+\benchrow{XuanTie\cite{XUANTIE_C910}}{544.16}{2803.48}{544.94}{2803.47}
+\end{tabular*}
+\caption{Porównanie wydajności pełnej verilacji (verilate + cppbuild + compile) przed i po wprowadzeniu zmian}
+\label{tab:verilator-compare-time-mem}
+\end{table}
+
+
+\begin{table}[H]
+\small
+\begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}|l|c|c|c|c|c|c|}
+\hline
+& \multicolumn{2}{c|}{Referencja}
+& \multicolumn{2}{c|}{Implementacja}
+& \multicolumn{2}{c|}{Zmiana [\%]} \\
+\hline
+Design
+& Czas [s] & RAM [MB]
+& Czas [s] & RAM [MB]
+& Czas [\%] & RAM [\%] \\
+\hline
+\benchrow{NVDLA}{319.45}{1234.19}{280.31}{1234.30}
+\benchrow{OpenPiton}{81.32}{41.20}{80.32}{41.12}
+\benchrow{OpenTitan}{146.93}{22.21}{150.48}{22.06}
+\benchrow{VeeR}{105.78}{11.44}{102.97}{11.38}
+\benchrow{Vortex}{50.87}{19.44}{50.99}{19.40}
+\benchrow{XuanTie}{113.21}{5.43}{120.84}{5.43}
+
+\end{tabular*}
+\caption{Porównanie wydajności symulacji przed i po wprowadzeniu zmian}
+\label{tab:verilator-compare-time-mem-execute}
+\end{table}
+
+Wyniki pokazują, że wprowadzone zmiany \textbf{nie wpływają istotnie na zużycie pamięci}, zarówno podczas pełnej verilacji, jak i symulacji — różnice są pomijalne i mieszczą się w granicach błędu pomiarowego. W przypadku pełnej verilacji obserwowany jest umiarkowany narzut czasowy dla większości designów, z wyjątkiem VeeR, dla którego odnotowano zauważalne przyspieszenie. Podczas symulacji zmiany mają charakter mieszany: dla NVDLA i VeeR widoczna jest umiarkowana poprawa czasu wykonania, natomiast dla XuanTie i OpenTitan występuje niewielka regresja. Ogólnie implementacja zachowuje porównywalną wydajność, a obserwowane różnice czasowe są zależne od charakterystyki designu.
+
+Wyżej opisana implementacja jest dostępna w gałęzi \href{https://github.com/ArturBieniek4/verilator/tree/89452-force-rework-v5}{89452-force-rework-v5}.
 
 \chapter{Dalsza praca}
 
@@ -580,14 +702,64 @@ Sygnały te mają obecnie wyższy priorytet niż przypisania \texttt{force} wyko
 
 Pomysłem na dalsze rozszerzenie interfejsu DPI-C jest udostępnienie dodatkowo sygnału \texttt{<v>\_VforceVec} i/lub metod \texttt{addForce} oraz \texttt{release}, co da dodatkowo możliwość zarządzania wszystkimi przypisaniami \texttt{force} wywołanych z poziomu kodu (System)Verilog.
 
-Ta funkcjonalność może być zaimplementowana po złączeniu docelowej implementacji \texttt{force}/\texttt{release} do głównej gałęzi Verilatora. To, czy będę ją implementował, zależy od zainteresowania społeczności Verilatora tym rozszerzeniem i poziomu trudności tej implementacji.
+Ta funkcjonalność może być zaimplementowana po złączeniu docelowej implementacji \texttt{force}/\texttt{release} do głównej gałęzi Verilatora. To, czy podjęta będzie próba jej implementacji, zależy od zainteresowania społeczności Verilatora tym rozszerzeniem i poziomu trudności tej implementacji.
+
+\chapter{Podsumowanie i wnioski}
+\section{Najważniejsze rezultaty}
+
+Najistotniejsze osiągnięcia pracy można podsumować następująco:
+
+\begin{itemize}
+    \item Przedstawiono szczegółową analizę semantyki \texttt{force}/\texttt{release} w kontekście standardu IEEE oraz jej relacji do innych mechanizmów przypisań (ciągłych, proceduralnych i proceduralnych ciągłych).
+    \item Przeanalizowano istniejący w Verilatorze mechanizm w pliku \texttt{V3Force.cpp}, wskazując jego ograniczenia (w szczególności problemy z poprawnością przy warunkowym wykonywaniu \texttt{force}) oraz zalety wydajnościowe wynikające z prostoty transformacji.
+    \item Opracowano alternatywne implementacje, które eliminują błędy wynikające z założeń analizy statycznej (w tym przypadki \texttt{force} w gałęziach warunkowych):
+    \begin{itemize}
+        \item implementację opartą o zastępowanie odczytów złożonymi wyrażeniami zależnymi od stanu wymuszeń,
+        \item implementację redukującą rozrost drzewa AST poprzez zastąpienie tych wyrażeń pętlami wykonywanymi w trakcie symulacji,
+        \item implementację docelową wykorzystującą struktury danych w C++ (np. \texttt{VlForceVec}) do reprezentacji aktywnych wymuszeń oraz funkcje odczytu (\texttt{VlForceRead}) łączące wartość oryginalną z wymuszeniami.
+    \end{itemize}
+    \item Zweryfikowano poprawność podejść na testach regresyjnych Verilatora oraz omówiono zachowanie w przypadkach brzegowych (m.in. projekty intensywnie używające struktur \texttt{packed struct}).
+    \item Oceniono wpływ docelowego podejścia na wydajność procesu verilacji i symulacji na reprezentatywnych projektach przy użyciu RTLMeter, wykazując brak istotnego wpływu na zużycie pamięci oraz niewielkie, zależne od projektu różnice czasowe (Tab.~\ref{tab:verilator-compare-time-mem} i Tab.~\ref{tab:verilator-compare-time-mem-execute}).
+\end{itemize}
+
+Dodatkowo, w toku prac wprowadzono poprawki zwiększające jakość i zakres obsługiwanych przypadków w istniejącym mechanizmie, w tym m.in. rozszerzenia dotyczące wyrażeń po prawej stronie \texttt{force}, diagnostyki błędów oraz korekty związanej z dopasowaniem szerokości operandów.
+
+\section{Wnioski z porównania podejść implementacyjnych}
+
+Przeprowadzone eksperymenty pokazują, że w kontekście Verilatora poprawna obsługa \texttt{force}/\texttt{release} wymaga utrzymywania w czasie symulacji informacji o \emph{dynamicznym} stanie wymuszeń, a nie jedynie statycznego „ostatniego \texttt{force}” znanego na etapie kompilacji. Najważniejsze obserwacje są następujące:
+
+\begin{itemize}
+    \item \textbf{Rozwiązania oparte wyłącznie o transformacje AST mogą być poprawne, ale nie muszą być skalowalne.}
+    Implementacja oparta o zastępowanie odczytów złożonymi wyrażeniami jest koncepcyjnie prosta i poprawna semantycznie, jednak prowadzi do gwałtownego rozrostu drzewa AST w projektach, w których (po transformacjach) pojedyncze sygnały osiągają bardzo dużą szerokość, a \texttt{force}/\texttt{release} występują masowo. Taki scenariusz pojawia się w praktyce m.in. przy intensywnym użyciu struktur typu \texttt{struct packed}.
+    
+    \item \textbf{Przeniesienie części pracy do czasu symulacji ogranicza zużycie pamięci na etapie kompilacji, ale może być nieakceptowalne czasowo.}
+    Zastąpienie rozbudowanych wyrażeń pętlami wykonywanymi podczas symulacji poprawia złożoność pamięciową i „umożliwia” przetworzenie przypadków, które wcześniej były niepraktyczne na etapie verilacji. Jednak koszt wykonywania pętli przy każdym odczycie sygnału z wymuszeniem może dominować czas symulacji, szczególnie gdy liczba aktywnych lub potencjalnych wymuszeń jest bardzo duża.
+    
+    \item \textbf{Docelowo najbardziej zrównoważone jest podejście hybrydowe: minimalna ingerencja w kod wynikowy + struktury danych używane w symulacji.}
+    Implementacja wykorzystująca struktury danych w C++ (np. uporządkowane wektory opisujące aktywne zakresy wymuszeń) pozwala ograniczyć rozrost kodu generowanego na etapie kompilacji, a jednocześnie zapewnia efektywny dostęp do informacji o wymuszeniach w czasie symulacji. W szczególności umożliwia to realizację operacji takich jak dodanie wymuszenia, zwolnienie zakresu oraz odczyt wartości z narzutem rzędu $O(\log k)$ względem liczby aktywnych wpisów, zamiast kosztów liniowych zależnych od liczby \texttt{force}.
+\end{itemize}
+
+Otrzymane wyniki wydajnościowe wskazują, że zaproponowana docelowa implementacja może być wdrożona bez istotnej regresji w typowych zastosowaniach: różnice w zużyciu pamięci są pomijalne, a wpływ na czas verilacji i symulacji jest niewielki oraz zależny od charakterystyki projektu (Tab.~\ref{tab:verilator-compare-time-mem} i Tab.~\ref{tab:verilator-compare-time-mem-execute}). Jest to istotne z punktu widzenia użytkowników Verilatora, ponieważ \texttt{force}/\texttt{release} są często używane w środowiskach weryfikacyjnych, gdzie oczekuje się zarówno poprawności semantycznej, jak i wysokiej wydajności.
+
+\section{Ograniczenia i rekomendacje}
+
+Pomimo uzyskanych rezultatów, należy wskazać obszary, które pozostają wyzwaniem lub wymagają dalszych prac:
+
+\begin{itemize}
+    \item \textbf{Obsługa \texttt{assign}/\texttt{deassign}.} Instrukcje te są zbliżone do \texttt{force}/\texttt{release}, jednak mają ograniczony zbiór dopuszczalnych lewych stron. Z tego powodu ich implementacja może być zrealizowana jako wyspecjalizowany przypadek opracowanego mechanizmu (co opisano w rozdziale dotyczącym dalszych prac).
+    \item \textbf{Prawa strona \texttt{force} zawierająca wywołania funkcji.} Aby zachować semantykę „zawsze aktualnej” wartości wymuszenia, w praktyce wymagane jest zapewnienie, że prawa strona jest ewaluowana w sposób kombinacyjny (np. przez dodatkową sieć \texttt{wire}) albo że mechanizm odczytu wymuszenia uwzględnia aktualny wynik funkcji.
+    \item \textbf{Interakcja z DPI-C i kompatybilność wsteczna.} Utrzymanie kompatybilności z istniejącym kodem C/C++ sterującym wymuszeniami poprzez dotychczasowe sygnały pomocnicze jest ważne, ale jednocześnie otwiera pytanie o docelowy, spójny interfejs dla zarządzania wymuszeniami z poziomu DPI.
+\end{itemize}
+
+\section{Podsumowanie}
+
+W pracy wykazano, że poprawna i jednocześnie praktyczna wydajnościowo implementacja \texttt{force}/\texttt{release} w Verilatorze jest możliwa, mimo że narzędzie nie realizuje klasycznego modelu zdarzeniowego. Kluczowe okazało się odejście od wyłącznie statycznej interpretacji wymuszeń na etapie kompilacji i wprowadzenie mechanizmu, który utrzymuje stan wymuszeń w czasie symulacji oraz umożliwia efektywny odczyt wartości uwzględniający priorytety przypisań.
+
+Ostatecznie zaproponowane podejście hybrydowe (transformacja do wywołań funkcji podczas symulacji + struktury danych w C++) zapewnia poprawność semantyczną w przypadkach, w których wcześniejsze rozwiązania były błędne, a równocześnie unika problemów skalowalności typowych dla podejść powodujących rozrost AST lub wymagających kosztownych pętli przy każdym odczycie. Wyniki pomiarów wskazują, że uzyskana funkcjonalność może zostać dostarczona użytkownikom bez istotnego pogorszenia parametrów praktycznych procesu verilacji i symulacji, co stanowi ważny krok w kierunku pełniejszego wsparcia konstrukcji SystemVerilog w Verilatorze.
+
 
 %%%%% BIBLIOGRAFIA
 
-\begin{thebibliography}{1}
-\bibitem{IEEE1364-2001} IEEE Standard for Verilog Hardware Description Language, IEEE Std 1364-2001, 2001. https://ieeexplore.ieee.org/document/954909
-\bibitem{IEEE1800-2005} IEEE Standard for SystemVerilog - Unified Hardware Design, Specification, and Verification Language, IEEE Std 1800-2005, 2005. https://ieeexplore.ieee.org/document/1560791
-\bibitem{IEEE1800-2023} IEEE Standard for SystemVerilog - Unified Hardware Design, Specification, and Verification Language, IEEE Std 1800-2023, 2023. https://ieeexplore.ieee.org/document/10458102
-\end{thebibliography}
+\printbibliography
 
 \end{document}
