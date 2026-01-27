@@ -617,6 +617,8 @@ Jak widać w powyższym fragmencie kodu, instrukcje \texttt{force} są zamienian
 
 Poniżej znajduje się porównanie wydajności wykonane przy użyciu narzędzia RTLMeter~\cite{rtlmeter}. Najnowszy dostępny Verilator jest porównywany z wyżej opisaną implementacją na niego nałożoną.
 
+Pomiary zostały wykonane na komputerze z procesorem AMD Ryzen 9 7900X oraz 32GB pamięci RAM DDR5-6000MT/s. SMT (\textit{Simultaneous Multithreading})  oraz boost były wyłączone, a governor częstotliwości procesora ustawiony na \textit{performance}. Każdy z testów został uruchomiony 10 razy, a podane wyniki to mediana z tych uruchomień.
+
 \begin{table}[H]
 \small
 \begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}|l|c|c|c|c|c|c|}
@@ -630,12 +632,12 @@ Design
 & Czas [s] & RAM [MB]
 & Czas [\%] & RAM [\%] \\
 \hline
-\benchrow{NVDLA\cite{NVDLA}}{1750.72}{8831.61}{1829.60}{8836.99}
-\benchrow{OpenPiton\cite{OpenPiton}}{558.12}{2707.13}{583.44}{2705.78}
-\benchrow{OpenTitan\cite{opentitan}}{369.50}{1844.17}{377.22}{1845.45}
-\benchrow{VeeR\cite{veer_eh2}}{208.56}{857.07}{194.90}{856.72}
-\benchrow{Vortex\cite{vortex}}{283.98}{1142.52}{284.10}{1145.18}
-\benchrow{XuanTie\cite{XUANTIE_C910}}{544.16}{2803.48}{544.94}{2803.47}
+\benchrow{NVDLA\cite{NVDLA}}{1429.61}{8114.85}{1427.39}{8115.90}
+\benchrow{OpenPiton\cite{OpenPiton}}{504.08}{2699.64}{504.32}{2699.69}
+\benchrow{OpenTitan\cite{opentitan}}{270.86}{1784.65}{271.00}{1785.01}
+\benchrow{VeeR\cite{veer_eh2}}{143.14}{933.43}{144.21}{933.40}
+\benchrow{Vortex\cite{vortex}}{239.84}{1075.07}{237.48}{1075.66}
+\benchrow{XuanTie\cite{XUANTIE_C910}}{424.15}{2542.06}{423.44}{2542.33}
 \end{tabular*}
 \caption{Porównanie wydajności pełnej verilacji (verilate + cppbuild + compile) przed i po wprowadzeniu zmian}
 \label{tab:verilator-compare-time-mem}
@@ -655,19 +657,19 @@ Design
 & Czas [s] & RAM [MB]
 & Czas [\%] & RAM [\%] \\
 \hline
-\benchrow{NVDLA}{319.45}{1234.19}{280.31}{1234.30}
-\benchrow{OpenPiton}{81.32}{41.20}{80.32}{41.12}
-\benchrow{OpenTitan}{146.93}{22.21}{150.48}{22.06}
-\benchrow{VeeR}{105.78}{11.44}{102.97}{11.38}
-\benchrow{Vortex}{50.87}{19.44}{50.99}{19.40}
-\benchrow{XuanTie}{113.21}{5.43}{120.84}{5.43}
+\benchrow{NVDLA}{222.26}{1238.69}{222.03}{1238.65}
+\benchrow{OpenPiton}{64.41}{41.77}{64.40}{41.74}
+\benchrow{OpenTitan}{141.71}{22.62}{142.45}{22.51}
+\benchrow{VeeR}{54.97}{13.56}{54.12}{13.64}
+\benchrow{Vortex}{38.41}{19.65}{38.37}{19.67}
+\benchrow{XuanTie}{88.95}{61.33}{89.11}{61.36}
 
 \end{tabular*}
 \caption{Porównanie wydajności symulacji przed i po wprowadzeniu zmian}
 \label{tab:verilator-compare-time-mem-execute}
 \end{table}
 
-Wyniki pokazują, że wprowadzone zmiany \textbf{nie wpływają istotnie na zużycie pamięci}, zarówno podczas pełnej verilacji, jak i symulacji — różnice są pomijalne i mieszczą się w granicach błędu pomiarowego. W przypadku pełnej verilacji obserwowany jest umiarkowany narzut czasowy dla większości designów, z wyjątkiem VeeR, dla którego odnotowano zauważalne przyspieszenie. Podczas symulacji zmiany mają charakter mieszany: dla NVDLA i VeeR widoczna jest umiarkowana poprawa czasu wykonania, natomiast dla XuanTie i OpenTitan występuje niewielka regresja. Ogólnie implementacja zachowuje porównywalną wydajność, a obserwowane różnice czasowe są zależne od charakterystyki designu.
+Wyniki pokazują, że wprowadzone zmiany \textbf{nie wpływają istotnie na zużycie pamięci ani czas verilacji oraz symulacji} — różnice są pomijalne i mieszczą się w granicach błędu pomiarowego.
 
 Wyżej opisana implementacja jest dostępna w gałęzi \href{https://github.com/ArturBieniek4/verilator/tree/89452-force-rework-v5}{89452-force-rework-v5}.
 
