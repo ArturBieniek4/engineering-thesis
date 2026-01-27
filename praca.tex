@@ -107,6 +107,8 @@ W klasycznych symulatorach sterowanych zdarzeniami każda zmiana wartości sygna
 
 Verilator~\cite{Verilator} jest natomiast otwartoźródłowym symulatorem opartym na kompilacji opisu sprzętu do kodu języka C++, który następnie jest kompilowany i wykonywany jako program natywny. Podejście to zapewnia wysoką wydajność symulacji, jednak nie opiera się bezpośrednio na klasycznym, zdarzeniowym kernelu symulacyjnym. W konsekwencji implementacja instrukcji \texttt{force}/\texttt{release} w Verilatorze wymaga zaprojektowania dodatkowych mechanizmów, które zapewnią zgodność obserwowalnego zachowania z semantyką języka.
 
+Ze względu na fakt, że Verilator jest obecnie najszybszym i najczęściej wykorzystywanym otwartoźródłowym symulatorem RTL, istotne jest, aby wspierał możliwie szeroki zakres konstrukcji języka Verilog i SystemVerilog. Umożliwia to większej liczbie użytkowników korzystanie z zaawansowanych mechanizmów weryfikacyjnych w środowisku open-source. W aktualnych wersjach Verilatora obsługa instrukcji \texttt{force}/\texttt{release} jest jednak istotnie ograniczona, co stanowiło bezpośrednią motywację do podjęcia prac nad jej rozszerzeniem.
+
 \section{Cel i zakres pracy}
 
 Celem niniejszej pracy jest zbadanie możliwości implementacji instrukcji \texttt{force} i \texttt{release} w otwartoźródłowym symulatorze Verilator. Praca obejmuje analizę wymagań wynikających ze standardu opisującego język Verilog/SystemVerilog, projekt mechanizmu obsługi tych instrukcji, jego implementację oraz weryfikację poprawności i wpływu na wydajność symulacji. Przedstawione zostaną alternatywne podejścia implementacyjne, omówione zostaną napotkane problemy oraz zaprezentowane wyniki testów wraz z wnioskami dotyczącymi użyteczności i efektywności zaproponowanych rozwiązań.
@@ -321,7 +323,7 @@ zostanie przekształcony na:
 }
 \end{center}
 
-To podejście ma oczywiste ograniczenie: Analiza statyczna kodu polega jedynie na najpóźniej występującej instrukcji \texttt{force}, więc nie obsługuje poprawnie przypadków, gdy instrukcja \texttt{force} jest wykonana pod wyrażeniem warunkowym, co może prowadzić do niepoprawnych wyników symulacji.
+To podejście ma oczywiste ograniczenie: Interpretacja statyczna kodu polega jedynie na najpóźniej występującej instrukcji \texttt{force}, więc nie obsługuje poprawnie przypadków, gdy instrukcja \texttt{force} jest wykonana pod wyrażeniem warunkowym, co może prowadzić do niepoprawnych wyników symulacji.
 
 Przykład:
 \begin{minted}{verilog}
@@ -620,6 +622,7 @@ Poniżej znajduje się porównanie wydajności wykonane przy użyciu narzędzia 
 Pomiary zostały wykonane na komputerze z procesorem AMD Ryzen 9 7900X oraz 32GB pamięci RAM DDR5-6000MT/s. SMT (\textit{Simultaneous Multithreading})  oraz boost były wyłączone, a governor częstotliwości procesora ustawiony na \textit{performance}. Każdy z testów został uruchomiony 10 razy, a podane wyniki to mediana z tych uruchomień.
 
 \begin{table}[H]
+\caption{Porównanie wydajności pełnej verilacji (verilate + cppbuild + compile) przed i po wprowadzeniu zmian}
 \small
 \begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}|l|c|c|c|c|c|c|}
 \hline
@@ -639,12 +642,12 @@ Design
 \benchrow{Vortex\cite{vortex}}{239.84}{1075.07}{237.48}{1075.66}
 \benchrow{XuanTie\cite{XUANTIE_C910}}{424.15}{2542.06}{423.44}{2542.33}
 \end{tabular*}
-\caption{Porównanie wydajności pełnej verilacji (verilate + cppbuild + compile) przed i po wprowadzeniu zmian}
 \label{tab:verilator-compare-time-mem}
 \end{table}
 
 
 \begin{table}[H]
+\caption{Porównanie wydajności symulacji przed i po wprowadzeniu zmian}
 \small
 \begin{tabular*}{\linewidth}{@{\extracolsep{\fill}}|l|c|c|c|c|c|c|}
 \hline
@@ -665,7 +668,6 @@ Design
 \benchrow{XuanTie}{88.95}{61.33}{89.11}{61.36}
 
 \end{tabular*}
-\caption{Porównanie wydajności symulacji przed i po wprowadzeniu zmian}
 \label{tab:verilator-compare-time-mem-execute}
 \end{table}
 
@@ -709,20 +711,15 @@ Ta funkcjonalność może być zaimplementowana po złączeniu docelowej impleme
 \chapter{Podsumowanie i wnioski}
 \section{Najważniejsze rezultaty}
 
-Najistotniejsze osiągnięcia pracy można podsumować następująco:
+W ramach niniejszej pracy przeprowadzono szczegółową analizę semantyki instrukcji \texttt{force}/\texttt{release} w odniesieniu do standardu IEEE, ze szczególnym uwzględnieniem jej relacji do innych mechanizmów przypisań występujących w językach Verilog i SystemVerilog, takich jak przypisania ciągłe, proceduralne oraz proceduralne ciągłe. Analiza ta pozwoliła na jednoznaczne określenie oczekiwanego, obserwowalnego zachowania sygnałów w obecności wymuszeń oraz na identyfikację przypadków problematycznych z punktu widzenia implementacji w symulatorach opartych na kompilacji.
 
-\begin{itemize}
-    \item Przedstawiono szczegółową analizę semantyki \texttt{force}/\texttt{release} w kontekście standardu IEEE oraz jej relacji do innych mechanizmów przypisań (ciągłych, proceduralnych i proceduralnych ciągłych).
-    \item Przeanalizowano istniejący w Verilatorze mechanizm w pliku \texttt{V3Force.cpp}, wskazując jego ograniczenia (w szczególności problemy z poprawnością przy warunkowym wykonywaniu \texttt{force}) oraz zalety wydajnościowe wynikające z prostoty transformacji.
-    \item Opracowano alternatywne implementacje, które eliminują błędy wynikające z założeń analizy statycznej (w tym przypadki \texttt{force} w gałęziach warunkowych):
-    \begin{itemize}
-        \item implementację opartą o zastępowanie odczytów złożonymi wyrażeniami zależnymi od stanu wymuszeń,
-        \item implementację redukującą rozrost drzewa AST poprzez zastąpienie tych wyrażeń pętlami wykonywanymi w trakcie symulacji,
-        \item implementację docelową wykorzystującą struktury danych w C++ (np. \texttt{VlForceVec}) do reprezentacji aktywnych wymuszeń oraz funkcje odczytu (\texttt{VlForceRead}) łączące wartość oryginalną z wymuszeniami.
-    \end{itemize}
-    \item Zweryfikowano poprawność podejść na testach regresyjnych Verilatora oraz omówiono zachowanie w przypadkach brzegowych (m.in. projekty intensywnie używające struktur \texttt{packed struct}).
-    \item Oceniono wpływ docelowego podejścia na wydajność procesu verilacji i symulacji na reprezentatywnych projektach przy użyciu RTLMeter, wykazując brak istotnego wpływu na zużycie pamięci oraz niewielkie, zależne od projektu różnice czasowe (Tab.~\ref{tab:verilator-compare-time-mem} i Tab.~\ref{tab:verilator-compare-time-mem-execute}).
-\end{itemize}
+Następnie przeanalizowano istniejący w Verilatorze mechanizm obsługi instrukcji \texttt{force}/\texttt{release}, zaimplementowany w pliku \texttt{V3Force.cpp}. Wskazano zarówno jego zalety, wynikające z prostoty zastosowanej transformacji i korzystnego wpływu na wydajność, jak i istotne ograniczenia funkcjonalne. W szczególności wykazano problemy z poprawnością semantyczną w przypadku warunkowego wykonywania instrukcji \texttt{force}, wynikające z przyjętych założeń statycznej interpretacji.
+
+W odpowiedzi na zidentyfikowane problemy zaprojektowano i porównano kilka alternatywnych podejść implementacyjnych, których celem było zapewnienie pełnej zgodności z semantyką języka. Zaproponowane rozwiązania obejmowały m.in. podejście polegające na zastępowaniu odczytów sygnałów złożonymi wyrażeniami zależnymi od aktualnego stanu wymuszeń, jak również wariant redukujący rozrost drzewa AST poprzez przeniesienie części logiki do pętli wykonywanych dynamicznie w trakcie symulacji. Ostatecznie opracowano docelową implementację wykorzystującą dedykowane struktury danych w języku C++ do reprezentacji aktywnych wymuszeń oraz wyspecjalizowane funkcje odczytu, które łączą wartość wynikającą z normalnej logiki projektu z nałożonymi wymuszeniami.
+
+Poprawność zaprojektowanych rozwiązań została zweryfikowana przy użyciu testów regresyjnych Verilatora, a także poprzez analizę zachowania w wybranych przypadkach brzegowych, w tym w projektach intensywnie wykorzystujących złożone struktury danych, takie jak \texttt{packed struct}. Pozwoliło to potwierdzić zgodność implementacji z oczekiwaną semantyką języka również w mniej typowych scenariuszach użycia.
+
+Na końcu oceniono wpływ docelowego podejścia na wydajność procesu verilacji oraz symulacji, przeprowadzając pomiary na reprezentatywnych projektach z wykorzystaniem narzędzia RTLMeter. Uzyskane wyniki wskazują na brak istotnego wzrostu zużycia pamięci oraz na jedynie niewielkie, zależne od charakterystyki projektu różnice czasowe, co potwierdzają zestawienia przedstawione w Tab.~\ref{tab:verilator-compare-time-mem} oraz Tab.~\ref{tab:verilator-compare-time-mem-execute}.
 
 Dodatkowo, w toku prac wprowadzono poprawki zwiększające jakość i zakres obsługiwanych przypadków w istniejącym mechanizmie, w tym m.in. rozszerzenia dotyczące wyrażeń po prawej stronie \texttt{force}, diagnostyki błędów oraz korekty związanej z dopasowaniem szerokości operandów.
 
@@ -735,23 +732,13 @@ Przeprowadzone eksperymenty pokazują, że w kontekście Verilatora poprawna obs
     Implementacja oparta o zastępowanie odczytów złożonymi wyrażeniami jest koncepcyjnie prosta i poprawna semantycznie, jednak prowadzi do gwałtownego rozrostu drzewa AST w projektach, w których (po transformacjach) pojedyncze sygnały osiągają bardzo dużą szerokość, a \texttt{force}/\texttt{release} występują masowo. Taki scenariusz pojawia się w praktyce m.in. przy intensywnym użyciu struktur typu \texttt{struct packed}.
     
     \item \textbf{Przeniesienie części pracy do czasu symulacji ogranicza zużycie pamięci na etapie kompilacji, ale może być nieakceptowalne czasowo.}
-    Zastąpienie rozbudowanych wyrażeń pętlami wykonywanymi podczas symulacji poprawia złożoność pamięciową i „umożliwia” przetworzenie przypadków, które wcześniej były niepraktyczne na etapie verilacji. Jednak koszt wykonywania pętli przy każdym odczycie sygnału z wymuszeniem może dominować czas symulacji, szczególnie gdy liczba aktywnych lub potencjalnych wymuszeń jest bardzo duża.
+    Zastąpienie rozbudowanych wyrażeń pętlami wykonywanymi podczas symulacji poprawia złożoność pamięciową i umożliwia przetworzenie przypadków, które wcześniej były niepraktyczne na etapie verilacji. Jednak koszt wykonywania pętli przy każdym odczycie sygnału z wymuszeniem może dominować czas symulacji, szczególnie gdy liczba aktywnych lub potencjalnych wymuszeń jest bardzo duża.
     
-    \item \textbf{Docelowo najbardziej zrównoważone jest podejście hybrydowe: minimalna ingerencja w kod wynikowy + struktury danych używane w symulacji.}
+    \item \textbf{Najbardziej zrównoważone jest podejście hybrydowe: minimalna ingerencja w kod wynikowy + struktury danych używane w symulacji.}
     Implementacja wykorzystująca struktury danych w C++ (np. uporządkowane wektory opisujące aktywne zakresy wymuszeń) pozwala ograniczyć rozrost kodu generowanego na etapie kompilacji, a jednocześnie zapewnia efektywny dostęp do informacji o wymuszeniach w czasie symulacji. W szczególności umożliwia to realizację operacji takich jak dodanie wymuszenia, zwolnienie zakresu oraz odczyt wartości z narzutem rzędu $O(\log k)$ względem liczby aktywnych wpisów, zamiast kosztów liniowych zależnych od liczby \texttt{force}.
 \end{itemize}
 
 Otrzymane wyniki wydajnościowe wskazują, że zaproponowana docelowa implementacja może być wdrożona bez istotnej regresji w typowych zastosowaniach: różnice w zużyciu pamięci są pomijalne, a wpływ na czas verilacji i symulacji jest niewielki oraz zależny od charakterystyki projektu (Tab.~\ref{tab:verilator-compare-time-mem} i Tab.~\ref{tab:verilator-compare-time-mem-execute}). Jest to istotne z punktu widzenia użytkowników Verilatora, ponieważ \texttt{force}/\texttt{release} są często używane w środowiskach weryfikacyjnych, gdzie oczekuje się zarówno poprawności semantycznej, jak i wysokiej wydajności.
-
-\section{Ograniczenia i rekomendacje}
-
-Pomimo uzyskanych rezultatów, należy wskazać obszary, które pozostają wyzwaniem lub wymagają dalszych prac:
-
-\begin{itemize}
-    \item \textbf{Obsługa \texttt{assign}/\texttt{deassign}.} Instrukcje te są zbliżone do \texttt{force}/\texttt{release}, jednak mają ograniczony zbiór dopuszczalnych lewych stron. Z tego powodu ich implementacja może być zrealizowana jako wyspecjalizowany przypadek opracowanego mechanizmu (co opisano w rozdziale dotyczącym dalszych prac).
-    \item \textbf{Prawa strona \texttt{force} zawierająca wywołania funkcji.} Aby zachować semantykę „zawsze aktualnej” wartości wymuszenia, w praktyce wymagane jest zapewnienie, że prawa strona jest ewaluowana w sposób kombinacyjny (np. przez dodatkową sieć \texttt{wire}) albo że mechanizm odczytu wymuszenia uwzględnia aktualny wynik funkcji.
-    \item \textbf{Interakcja z DPI-C i kompatybilność wsteczna.} Utrzymanie kompatybilności z istniejącym kodem C/C++ sterującym wymuszeniami poprzez dotychczasowe sygnały pomocnicze jest ważne, ale jednocześnie otwiera pytanie o docelowy, spójny interfejs dla zarządzania wymuszeniami z poziomu DPI.
-\end{itemize}
 
 \section{Podsumowanie}
 
